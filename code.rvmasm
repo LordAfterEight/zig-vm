@@ -1,0 +1,45 @@
+# Repeatedly adds 1 to A register to test addition
+routine: increment_loop
+radd A num 1
+comp reg A num 65535
+juin increment_loop
+rtor
+end
+
+# Repeatedly subtracts 1 from A register to test subtraction
+routine: decrement_loop
+rsub A num 1
+comp reg A num 0
+juin decrement_loop
+rtor
+end
+
+# Repeatedly multiplies A register value by 2 to test multiplication
+routine: multiply_loop
+rmul A num 2
+comp reg A num 32768
+juin multiply_loop
+rtor
+end
+
+# Repeatedly divides A register value by 2 to test division
+routine: divide_loop
+rdiv A num 2
+comp reg A num 1
+juin divide_loop
+rtor
+end
+
+# Entry routine. Program will always start here
+routine: entry
+load A num 1
+jusr multiply_loop
+load A num 65535
+jusr divide_loop
+load A num 1
+jusr increment_loop
+load A num 65535
+jusr decrement_loop
+load A num 621
+ctrl cpu halt
+end
