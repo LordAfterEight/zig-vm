@@ -2,6 +2,7 @@ const std = @import("std");
 const opcodes = @import("opcodes.zig");
 const cpu_ = @import("cpu.zig");
 const mem = @import("memory.zig");
+const gpu_ = @import("gpu.zig");
 const sfml = @cImport({
     @cInclude("CSFML/Graphics.h");
     @cInclude("CSFML/Window.h");
@@ -11,20 +12,17 @@ const sfml = @cImport({
 const SCALING = 1.0;
 
 pub fn main() !void {
-    const mode = sfml.sfVideoMode{
-        .bitsPerPixel = 32,
-        .size = .{ .x = 960 * SCALING, .y = 540 * SCALING },
-    };
-    const window = sfml.sfRenderWindow_create(mode, "ZVM", sfml.sfClose | sfml.sfResize, sfml.sfWindowed, null);
-    defer sfml.sfRenderWindow_destroy(window);
+
+    var gpu = try gpu_.GPU.init();
+    defer gpu.deinit();
 
     var cpu = cpu_.CPU.init();
 
     std.log.info("Starting VM", .{});
 
-    while (sfml.sfRenderWindow_isOpen(window)) {
+    while (sfml.sfRenderWindow_isOpen(gpu.window)) {
         var event: sfml.sfEvent = undefined;
-        sfml.sfRenderWindow_clear(window, sfml.sfBlack);
+        sfml.sfRenderWindow_clear(gpu.window, sfml.sfBlack);
         var ram_usage: f32 = 0.0;
         var addresses_used: f32 = 0.0;
 
@@ -61,12 +59,11 @@ pub fn main() !void {
             std.log.info("Halt flag true", .{});
         }
 
-        while (sfml.sfRenderWindow_pollEvent(window, &event)) {
+        while (sfml.sfRenderWindow_pollEvent(gpu.window, &event)) {
             if (event.type == sfml.sfEvtClosed) {
-                sfml.sfRenderWindow_close(window);
+                sfml.sfRenderWindow_close(gpu.window);
             }
         }
-
-        sfml.sfRenderWindow_display(window);
+        gpu.update();
     }
 }
