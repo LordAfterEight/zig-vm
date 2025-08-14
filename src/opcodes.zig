@@ -41,19 +41,19 @@ pub const JMP_TO_AD: u16 = 0x00C0;
 // --- OpCodes: Return from Subroutine / Return to Origin ---
 /// OpCode: Fetches the value previously pushed to the stack and sets the instruction pointer to
 ///         it, returning to where the program came from.
-pub const RET_TO_OR: u16 = 0x00C2;
+pub const RET_TO_OR: u16 = 0x00D1;
 
 // --- OpCodes: Compare two registers ---
 /// OpCodes: Compares two registers and sets the eq_flag accordingly.
-pub const COMP_REGS: u16 = 0x00D1;
+pub const COMP_REGS: u16 = 0x00D6;
 
 // --- OpCodes: Jump if equal ---
 /// OpCodes: Jumps to the following address if the eq_flag is true
-pub const JUMP_IFEQ: u16 = 0x00C3;
+pub const JUMP_IFEQ: u16 = 0x00C2;
 
 // --- OpCodes: Jump if not equal ---
 /// OpCodes: Jumps to the following address if the eq_flag is false
-pub const JUMP_INEQ: u16 = 0x00C4;
+pub const JUMP_INEQ: u16 = 0x00C3;
 
 // --- OpCodes: Increment register value ---
 /// OpCodes: Increases the value in the register specified in the following address by the value

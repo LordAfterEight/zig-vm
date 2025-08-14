@@ -10,6 +10,7 @@ pub fn build(b: *std.Build) void {
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
 
+
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
@@ -61,9 +62,16 @@ pub fn build(b: *std.Build) void {
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
     const exe = b.addExecutable(.{
-        .name = "foo",
+        .name = "zvm",
         .root_module = exe_mod,
     });
+
+    exe.addIncludePath(.{ .cwd_relative = "/usr/include/CSFML" });
+    exe.linkLibC();
+
+    exe.linkSystemLibrary("csfml-graphics");
+    exe.linkSystemLibrary("csfml-system");
+    exe.linkSystemLibrary("csfml-window");
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

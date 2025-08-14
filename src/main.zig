@@ -1,17 +1,72 @@
 const std = @import("std");
 const opcodes = @import("opcodes.zig");
 const cpu_ = @import("cpu.zig");
+const mem = @import("memory.zig");
+const sfml = @cImport({
+    @cInclude("CSFML/Graphics.h");
+    @cInclude("CSFML/Window.h");
+    @cInclude("CSFML/System.h");
+});
+
+const SCALING = 1.0;
 
 pub fn main() !void {
+    const mode = sfml.sfVideoMode{
+        .bitsPerPixel = 32,
+        .size = .{ .x = 960 * SCALING, .y = 540 * SCALING },
+    };
+    const window = sfml.sfRenderWindow_create(mode, "ZVM", sfml.sfClose | sfml.sfResize, sfml.sfWindowed, null);
+    defer sfml.sfRenderWindow_destroy(window);
+
     var cpu = cpu_.CPU.init();
 
-    std.log.info("Preprogramming memory...", .{});
-    cpu.memory.rom[0x1000] = opcodes.LOAD_AREG;
-    cpu.memory.rom[0x1001] = 0x1;
-    cpu.memory.rom[0x1002] = opcodes.HALT_LOOP;
-
     std.log.info("Starting VM", .{});
-    while (true) {
-        try cpu.update();
+
+    while (sfml.sfRenderWindow_isOpen(window)) {
+        var event: sfml.sfEvent = undefined;
+        sfml.sfRenderWindow_clear(window, sfml.sfBlack);
+        var ram_usage: f32 = 0.0;
+        var addresses_used: f32 = 0.0;
+
+        for (cpu.memory.ram) |value| {
+            if (value != 0) {
+                addresses_used += 1.0;
+            }
+        }
+
+        ram_usage = addresses_used * 100.0 / 0xFFFF.0;
+
+        std.log.info("{s}\n{s}{X}\n{s}{X}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d:.2}%\n\n{s}\n", .{
+            "\x1b[2J\x1b[H",
+            "MP: 0x",
+            cpu.memory_ptr,
+            "SP: 0x",
+            cpu.stack_ptr,
+            "A Register: ",
+            cpu.a_reg,
+            "B Register: ",
+            cpu.b_reg,
+            "C Register: ",
+            cpu.c_reg,
+            "D Register: ",
+            cpu.d_reg,
+            "RAM usage: ",
+            ram_usage,
+            "Actions: "
+        });
+
+        if (cpu.halt_flag == false) {
+            cpu.update() catch std.log.info("Error Occured");
+        } else {
+            std.log.info("Halt flag true", .{});
+        }
+
+        while (sfml.sfRenderWindow_pollEvent(window, &event)) {
+            if (event.type == sfml.sfEvtClosed) {
+                sfml.sfRenderWindow_close(window);
+            }
+        }
+
+        sfml.sfRenderWindow_display(window);
     }
 }
