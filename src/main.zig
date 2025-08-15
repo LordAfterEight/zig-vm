@@ -34,7 +34,7 @@ pub fn main() !void {
 
         ram_usage = addresses_used * 100.0 / 0xFFFF.0;
 
-        std.log.info("{s}\n{s}{X}\n{s}{X}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d:.2}%\n\n{s}\n", .{
+        std.log.info("{s}\n{s}{X}\n{s}{X}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d:.2}% | {d:.2}kiB/128kiB\n\n{s}\n", .{
             "\x1b[2J\x1b[H",
             "MP: 0x",
             cpu.memory_ptr,
@@ -50,6 +50,7 @@ pub fn main() !void {
             cpu.d_reg,
             "RAM usage: ",
             ram_usage,
+            addresses_used * 2.0 / 1024.0,
             "Actions: "
         });
 

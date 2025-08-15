@@ -5,12 +5,12 @@ const mem_ = @import("memory.zig");
 pub const CPU = struct {
     memory: mem_.Memory = mem_.Memory.init(),
     memory_ptr: u16 = 0x1000,
-    stack_ptr: u8 = 0x00,
+    stack_ptr: u16 = 0x0,
 
-    a_reg: u16 = 0x0000,
-    b_reg: u16 = 0x0000,
-    c_reg: u16 = 0x0000,
-    d_reg: u16 = 0x0000,
+    a_reg: u16 = 0x0,
+    b_reg: u16 = 0x0,
+    c_reg: u16 = 0x0,
+    d_reg: u16 = 0x0,
 
     halt_flag: bool = false,
     eq_flag: bool = false,
@@ -29,6 +29,7 @@ pub const CPU = struct {
 
     pub fn read_word_from_file(self: *CPU) u16 {
         var file = std.fs.cwd().openFile("ROM.bin", .{}) catch return opcodes.NO_OPERAT;
+        defer file.close();
 
         file.seekTo(@as(u64, self.memory_ptr) * 2) catch return opcodes.NO_OPERAT;
         var buf: [2]u8 = undefined;
@@ -40,7 +41,6 @@ pub const CPU = struct {
         std.log.info("Read instruction 0x{X} at address 0x{X}", .{return_value, self.memory_ptr});
 
         try self.incr_mem_ptr();
-        defer file.close();
         return return_value;
     }
 
