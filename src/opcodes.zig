@@ -11,22 +11,26 @@ pub const HALT_LOOP: u16 = 0x00AF;
 // --- OpCodes: Load into Register ---
 /// OpCode: Loads the following value into A register
 pub const LOAD_AREG: u16 = 0x00A1;
-/// OpCode: Loads the following value into X register
+/// OpCode: Loads the following value into B register
 pub const LOAD_BREG: u16 = 0x00A2;
-/// OpCode: Loads the following value into Y register
+/// OpCode: Loads the following value into C register
 pub const LOAD_CREG: u16 = 0x00A3;
-/// OpCode: Loads the following value into G register
+/// OpCode: Loads the following value into D register
 pub const LOAD_DREG: u16 = 0x00A4;
+/// OpCode: Loads the following value into G register
+pub const LOAD_GREG: u16 = 0x00A5;
 
 // --- OpCodes: Load into Register ---
 /// OpCode: Stores the A register's value to the following address
 pub const STOR_AREG: u16 = 0x00B1;
-/// OpCode: Stores the X register's value to the following address
+/// OpCode: Stores the B register's value to the following address
 pub const STOR_BREG: u16 = 0x00B2;
-/// OpCode: Stores the Y register's value to the following address
+/// OpCode: Stores the C register's value to the following address
 pub const STOR_CREG: u16 = 0x00B3;
-/// OpCode: Stores the G register's value to the following address
+/// OpCode: Stores the D register's value to the following address
 pub const STOR_DREG: u16 = 0x00B4;
+/// OpCode: Stores the G register's value to the following address
+pub const STOR_GREG: u16 = 0x00B5;
 
 // --- OpCodes: Jump to Subroutine ---
 /// OpCode: Sets the instruction pointer to the value of the following address, jumping there.

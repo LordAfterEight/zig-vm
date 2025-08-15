@@ -5,12 +5,15 @@ const mem_ = @import("memory.zig");
 pub const CPU = struct {
     memory: mem_.Memory = mem_.Memory.init(),
     memory_ptr: u16 = 0x1000,
+    gpu_buf_ptr: u16 = 0x300,
     stack_ptr: u16 = 0x0,
 
     a_reg: u16 = 0x0,
     b_reg: u16 = 0x0,
     c_reg: u16 = 0x0,
     d_reg: u16 = 0x0,
+
+    g_reg: u16 = 0x0,
 
     halt_flag: bool = false,
     eq_flag: bool = false,
@@ -19,12 +22,20 @@ pub const CPU = struct {
         return CPU {};
     }
 
-    pub fn incr_mem_ptr(self: *CPU) !void {
+    pub fn incr_mem_ptr(self: *CPU) void {
         self.memory_ptr +%= 1;
     }
 
-    pub fn incr_stack_ptr(self: *CPU) !void {
+    pub fn incr_stack_ptr(self: *CPU) void {
         self.stack_ptr +%= 1;
+    }
+
+    pub fn incr_gpu_buf_ptr(self: *CPU) void {
+        if (self.gpu_buf_ptr < 0xFFF) {
+            self.gpu_buf_ptr += 1;
+        } else {
+            self.gpu_buf_ptr = 0;
+        }
     }
 
     pub fn read_word_from_file(self: *CPU) u16 {
@@ -40,8 +51,21 @@ pub const CPU = struct {
 
         std.log.info("Read instruction 0x{X} at address 0x{X}", .{return_value, self.memory_ptr});
 
-        try self.incr_mem_ptr();
+        self.incr_mem_ptr();
         return return_value;
+    }
+
+    pub fn write_word_to_file(self: *CPU, value: u16, address: u16) !void {
+        var file = try std.fs.cwd().createFile("ROM.bin", .{.truncate = false});
+        defer file.close();
+
+        std.log.info("Write value 0x{X} to address 0x{X}", .{value, address});
+
+        try file.seekTo(@as(u64, address) * 2);
+        var buf: [2]u8 = undefined;
+        std.mem.writeInt(u16, &buf, value, .big);
+        try file.writeAll(&buf);
+        self.memory_ptr += 0;
     }
 
     pub fn update(self: *CPU) !void {
@@ -67,13 +91,30 @@ pub const CPU = struct {
                 std.log.info("Loading D register with value: {}", .{value});
                 self.d_reg = value;
             },
+            opcodes.LOAD_GREG => {
+                const value = self.read_word_from_file();
+                std.log.info("Loading G register with value: 0x{X}", .{value});
+                self.g_reg = value;
+            },
             opcodes.STOR_AREG => {
+                try self.write_word_to_file(self.a_reg, self.read_word_from_file());
             },
             opcodes.STOR_BREG => {
+                try self.write_word_to_file(self.b_reg, self.read_word_from_file());
             },
             opcodes.STOR_CREG => {
+                try self.write_word_to_file(self.c_reg, self.read_word_from_file());
             },
             opcodes.STOR_DREG => {
+                try self.write_word_to_file(self.d_reg, self.read_word_from_file());
+            },
+            opcodes.STOR_GREG => {
+                try self.write_word_to_file(self.g_reg, self.gpu_buf_ptr);
+                if (self.g_reg == opcodes.GPU_RES_F_BUF) {
+                    self.gpu_buf_ptr = 0x300;
+                } else {
+                    self.incr_gpu_buf_ptr();
+                }
             },
             opcodes.JMP_TO_AD => {
                 const address = self.read_word_from_file();
@@ -85,7 +126,7 @@ pub const CPU = struct {
                 const address = self.read_word_from_file();
                 std.log.info("Jumping to subroutine at address: 0x{X}", .{address});
                 self.memory_ptr = address;
-                try self.incr_stack_ptr();
+                self.incr_stack_ptr();
             },
             opcodes.RET_TO_OR => {
                 self.stack_ptr -%= 1;
@@ -182,7 +223,9 @@ pub const CPU = struct {
                 //std.process.exit(0);
                 self.halt_flag = true;
             },
-            else => {},
+            else => {
+                std.log.info("Invalid OpCode: {X}", .{instruction});
+            },
         }
     }
 };

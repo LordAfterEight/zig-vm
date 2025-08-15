@@ -34,12 +34,14 @@ pub fn main() !void {
 
         ram_usage = addresses_used * 100.0 / 0xFFFF.0;
 
-        std.log.info("{s}\n{s}{X}\n{s}{X}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d:.2}% | {d:.2}kiB/128kiB\n\n{s}\n", .{
+        std.log.info("{s}\n{s}{X}\n{s}{X}\n{s}{X}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{d}\n{s}{X}\n{s}{d:.2}% | {d:.2}kiB/128kiB\n\n{s}\n", .{
             "\x1b[2J\x1b[H",
             "MP: 0x",
             cpu.memory_ptr,
             "SP: 0x",
             cpu.stack_ptr,
+            "GP: 0x",
+            cpu.gpu_buf_ptr,
             "A Register: ",
             cpu.a_reg,
             "B Register: ",
@@ -48,6 +50,8 @@ pub fn main() !void {
             cpu.c_reg,
             "D Register: ",
             cpu.d_reg,
+            "G Register: 0x",
+            cpu.g_reg,
             "RAM usage: ",
             ram_usage,
             addresses_used * 2.0 / 1024.0,
@@ -55,12 +59,19 @@ pub fn main() !void {
         });
 
         if (cpu.halt_flag == false) {
-            cpu.update() catch std.log.info("Error Occured");
+            cpu.update() catch std.log.info("Error Occured!", .{});
         } else {
             std.log.info("Halt flag true", .{});
         }
 
         while (sfml.sfRenderWindow_pollEvent(gpu.window, &event)) {
+            if (sfml.sfKeyboard_isKeyPressed(sfml.sfKeyEscape)) {
+                std.process.exit(0);
+            }
+            if (sfml.sfKeyboard_isKeyPressed(sfml.sfKeyF11)) {
+                try gpu.toggle_fullscreen();
+                std.Thread.sleep(500_000_000);
+            }
             if (event.type == sfml.sfEvtClosed) {
                 sfml.sfRenderWindow_close(gpu.window);
             }
