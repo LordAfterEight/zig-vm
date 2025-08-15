@@ -59,7 +59,7 @@ pub fn main() !void {
         });
 
         if (cpu.halt_flag == false) {
-            cpu.update() catch std.log.info("Error Occured!", .{});
+            cpu.update(&gpu) catch std.log.info("Error Occured!", .{});
         } else {
             std.log.info("Halt flag true", .{});
         }
@@ -70,12 +70,12 @@ pub fn main() !void {
             }
             if (sfml.sfKeyboard_isKeyPressed(sfml.sfKeyF11)) {
                 try gpu.toggle_fullscreen();
-                std.Thread.sleep(500_000_000);
+                std.Thread.sleep(250_000_000);
             }
             if (event.type == sfml.sfEvtClosed) {
                 sfml.sfRenderWindow_close(gpu.window);
             }
         }
-        gpu.update();
+        try gpu.update();
     }
 }

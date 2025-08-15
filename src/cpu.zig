@@ -1,6 +1,7 @@
 const std = @import("std");
 const opcodes = @import("opcodes.zig");
 const mem_ = @import("memory.zig");
+const GPU = @import("gpu.zig");
 
 pub const CPU = struct {
     memory: mem_.Memory = mem_.Memory.init(),
@@ -68,7 +69,7 @@ pub const CPU = struct {
         self.memory_ptr += 0;
     }
 
-    pub fn update(self: *CPU) !void {
+    pub fn update(self: *CPU, gpu: *GPU.GPU) !void {
         const instruction = self.read_word_from_file();
         switch (instruction) {
             opcodes.LOAD_AREG => {
@@ -92,9 +93,22 @@ pub const CPU = struct {
                 self.d_reg = value;
             },
             opcodes.LOAD_GREG => {
-                const value = self.read_word_from_file();
-                std.log.info("Loading G register with value: 0x{X}", .{value});
+                var value = self.read_word_from_file();
+                if (value >> 8 == 0xF0) {
+                    gpu.int_flag = true;
+                    switch (value) {
+                        0xF0AA => value = self.a_reg,
+                        0xF0BB => value = self.b_reg,
+                        0xF0CC => value = self.c_reg,
+                        0xF0DD => value = self.d_reg,
+                        else => {}
+                    }
+                }
+                if (value == opcodes.GPU_RESET_PTR) {
+                    self.gpu_buf_ptr = 0x300;
+                }
                 self.g_reg = value;
+                std.log.info("Loading G register with value: 0x{X}", .{value});
             },
             opcodes.STOR_AREG => {
                 try self.write_word_to_file(self.a_reg, self.read_word_from_file());
@@ -183,12 +197,36 @@ pub const CPU = struct {
                     true  => self.memory_ptr = self.read_word_from_file(),
                     false => {}
                 }
+                self.eq_flag = false;
             },
             opcodes.JUMP_INEQ => {
                 switch (self.eq_flag) {
                     false => self.memory_ptr = self.read_word_from_file(),
                     true  => {}
                 }
+                self.eq_flag = false;
+            },
+            opcodes.BRAN_IFEQ => {
+                self.memory.ram[self.stack_ptr] = self.memory_ptr;
+                switch (self.eq_flag) {
+                    true  => {
+                        self.memory_ptr = self.read_word_from_file();
+                        self.incr_stack_ptr();
+                    },
+                    false => {}
+                }
+                self.eq_flag = false;
+            },
+            opcodes.BRAN_INEQ => {
+                self.memory.ram[self.stack_ptr] = self.memory_ptr;
+                switch (self.eq_flag) {
+                    false => {
+                        self.memory_ptr = self.read_word_from_file();
+                        self.incr_stack_ptr();
+                    },
+                    true  => {}
+                }
+                self.eq_flag = false;
             },
             opcodes.COMP_REGS => {
                 var val1 = self.read_word_from_file();

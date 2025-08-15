@@ -28,6 +28,7 @@ pub const GPU = struct {
     frame_buffer: [FRAME_SIZE_X][FRAME_SIZE_Y]u8 = [_][FRAME_SIZE_Y]u8{ [_]u8{' '} ** FRAME_SIZE_Y } ** FRAME_SIZE_X,
     color_buffer: [FRAME_SIZE_X][FRAME_SIZE_Y]u8 = [_][FRAME_SIZE_Y]u8{ [_]u8{0x0} ** FRAME_SIZE_Y } ** FRAME_SIZE_X,
     text: *sfml.sfText,
+    int_flag: bool = false,
 
     pub fn init() !GPU {
         const font_size = 12;
@@ -107,31 +108,58 @@ pub const GPU = struct {
     }
 
     pub fn move_cursor(self: *GPU) !void {
-        if (self.cursor_x < FRAME_SIZE_X) {
+        if (self.cursor_x < FRAME_SIZE_X - 1) {
             self.cursor_x += 1;
         } else {
             self.cursor_x = 0;
-            self.cursor_y += 1;
+            if (self.cursor_y < FRAME_SIZE_Y - 1){
+                self.cursor_y += 1;
+            } else {
+                self.cursor_y = 0;
+            }
         }
     }
 
-    pub fn update(self: *GPU) void {
+    pub fn update(self: *GPU) !void {
         const instruction = self.read_word_from_file();
         switch (self.draw_mode) {
             true => {
-                const char: u8 = @intCast(instruction & 0xFF);
-                const color: u8 = @intCast(instruction >> 8);
 
-                std.log.info("Found character: {c} | {X} with color {X}", .{char, char, color});
+                std.log.info("GPU: Int mode: {}", .{self.int_flag});
 
-                switch (char) {
-                    '`' => self.draw_mode = false,
-                    0x20...0x5F, 0x61...0x7F => {
-                        self.frame_buffer[self.cursor_x][self.cursor_y] = char;
-                        self.color_buffer[self.cursor_x][self.cursor_y] = color;
-                        try self.move_cursor();
+                switch (self.int_flag) {
+                    true => {
+                        const value = instruction;
+                        var buffer: [6]u8 = undefined;
+
+                        if (value != 0xA000) {
+                            std.log.info("GPU: Found number: {d} | {X}", .{value, value});
+
+                            const slice: []u8 = try std.fmt.bufPrint(&buffer, "{d}", .{value});
+                            for (slice) |char| {
+                                self.frame_buffer[self.cursor_x][self.cursor_y] = char;
+                                try self.move_cursor();
+                            }
+                            self.int_flag = false;
+                            self.draw_mode = false;
+                        }
                     },
-                    else => {}
+                    false => {
+                        const char: u8 = @intCast(instruction & 0xFF);
+                        const color: u8 = @intCast(instruction >> 8);
+
+                        std.log.info("GPU: Found character: {c} | {X} with color {X}", .{char, char, color});
+
+                        switch (char) {
+                            '`' => self.draw_mode = false,
+                            0x20...0x5F, 0x61...0x7F => {
+                                self.frame_buffer[self.cursor_x][self.cursor_y] = char;
+                                self.color_buffer[self.cursor_x][self.cursor_y] = color;
+                                try self.move_cursor();
+                            },
+                            else => {}
+                        }
+                    }
                 }
             },
             false => {
@@ -140,11 +168,37 @@ pub const GPU = struct {
                         self.cursor_y += 1;
                         self.cursor_x = 0;
                     },
+                    opcodes.GPU_RES_F_BUF => {
+                        for (0..FRAME_SIZE_Y) |y| {
+                            for (0..FRAME_SIZE_X) |x| {
+                                self.frame_buffer[x][y] = ' ';
+                            }
+                        }
+                        self.cursor_y = 0;
+                        self.cursor_x = 0;
+                    },
+                    opcodes.GPU_RESET_PTR => {
+                        self.buf_ptr = 0x300;
+                        self.cursor_y = 0;
+                        self.cursor_x = 0;
+                    },
+                    opcodes.GPU_MV_C_UP => {
+                        self.cursor_y -= 1;
+                    },
+                    opcodes.GPU_MV_C_DOWN => {
+                        self.cursor_y += 1;
+                    },
+                    opcodes.GPU_MV_C_LEFT => {
+                        self.cursor_x -= 1;
+                    },
+                    opcodes.GPU_MV_C_RIGH => {
+                        self.cursor_x += 1;
+                    },
                     opcodes.GPU_DRAW_TEXT => {
                         self.draw_mode = true;
                     },
                     opcodes.GPU_NO_OPERAT => {
-                        std.log.info("Doing nothing", .{});
+                        std.log.info("GPU: Doing nothing", .{});
                     },
                     else => {}
                 }
@@ -172,8 +226,8 @@ pub const GPU = struct {
         });
         sfml.sfRenderWindow_drawText(self.window, cursor, null);
 
-        for (0..self.frame_buffer[0].len) |y| {
-            for (0..self.frame_buffer.len) |x| {
+        for (0..FRAME_SIZE_Y) |y| {
+            for (0..FRAME_SIZE_X) |x| {
                 const ch: u8 = self.frame_buffer[x][y];
                 const col: u8 = self.color_buffer[x][y];
                 var str: [2]u8 = .{ ch, 0 }; // Null-terminated string for CSFML
