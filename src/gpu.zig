@@ -19,6 +19,7 @@ pub const GPU = struct {
     window: *sfml.sfRenderWindow,
     buf_ptr: u16 = 0x300,
     draw_mode: bool = false,
+    cursor: Cursor = Cursor.init(),
     cursor_x: u8 = 0,
     cursor_y: u8 = 0,
     font: *sfml.sfFont,
@@ -107,16 +108,28 @@ pub const GPU = struct {
             }
         }
         self.handle_window_events();
+        self.cursor.update();
         self.render();
     }
 
     pub fn render(self: *GPU) void {
         const text = sfml.sfText_create(self.font);
+        const cursor = sfml.sfText_create(self.font);
 
         defer sfml.sfText_destroy(text);
+        defer sfml.sfText_destroy(cursor);
 
-        sfml.sfText_setFont(text, self.font);
         sfml.sfText_setCharacterSize(text, self.font_size);
+        sfml.sfText_setCharacterSize(cursor, self.font_size);
+
+        sfml.sfText_setString(cursor, self.cursor.cursor_char);
+
+        sfml.sfText_setPosition(cursor, sfml.sfVector2f{
+            .x = @floatFromInt(self.cursor_x * (self.font_size - 4)),
+            .y = @floatFromInt(self.cursor_y * (self.font_size)),
+        });
+        sfml.sfRenderWindow_drawText(self.window, cursor, null);
+
 
         for (0..self.frame_buffer[0].len) |y| {
             for (0..self.frame_buffer.len) |x| {
@@ -136,13 +149,23 @@ pub const GPU = struct {
 
 pub const Cursor = struct {
     cycle_counter: u16 = 0,
-    cursor_char: u8 = '_',
+    cursor_char: *const [1]u8 = "_",
+
+    pub fn init() Cursor {
+        return Cursor {};
+    }
 
     pub fn update(self: *Cursor) void {
-        if (self.cycle_counter < 65535) {
+        if (self.cycle_counter < 0x300) {
             self.cycle_counter += 1;
         } else {
             self.cycle_counter = 0;
+        }
+
+        if (self.cycle_counter > 0x300 / 2) {
+            self.cursor_char = "_";
+        } else {
+            self.cursor_char = " ";
         }
     }
 };
