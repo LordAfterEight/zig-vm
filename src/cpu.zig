@@ -44,7 +44,7 @@ pub const CPU = struct {
         if (self.gpu_buf_ptr < 0xFFF) {
             self.gpu_buf_ptr += 1;
         } else {
-            self.gpu_buf_ptr = 0;
+            self.gpu_buf_ptr = 0x300;
         }
     }
 
@@ -62,6 +62,22 @@ pub const CPU = struct {
         std.log.info("Read instruction 0x{X} at address 0x{X}", .{return_value, self.memory_ptr});
 
         self.incr_mem_ptr();
+        return return_value;
+    }
+
+    pub fn read_word_from_file_at(address: u16) u16 {
+        var file = std.fs.cwd().openFile("ROM.bin", .{}) catch return opcodes.NO_OPERAT;
+        defer file.close();
+
+        file.seekTo(@as(u64, address) * 2) catch return opcodes.NO_OPERAT;
+        var buf: [2]u8 = undefined;
+        _ = file.readAll(&buf) catch return opcodes.NO_OPERAT;
+
+        var return_value: u16 = opcodes.NO_OPERAT;
+        return_value = std.mem.readInt(u16, &buf, .big);
+
+        std.log.info("Read instruction 0x{X} at address 0x{X}", .{return_value, address});
+
         return return_value;
     }
 
@@ -155,15 +171,29 @@ pub const CPU = struct {
             },
             opcodes.LOAD_GREG => {
                 var value = self.read_word_from_file();
-                if (value >> 8 == 0xF0) {
-                    gpu.int_flag = true;
-                    switch (value) {
-                        0xF0AA => value = self.a_reg,
-                        0xF0BB => value = self.b_reg,
-                        0xF0CC => value = self.c_reg,
-                        0xF0DD => value = self.d_reg,
-                        else => {}
-                    }
+                switch (value >> 12) {
+                    0xE => {
+                        std.log.info("0x{X}", .{value});
+                        gpu.int_flag = true;
+                        switch (value) {
+                            0xE0AA => value = self.a_reg,
+                            0xE0BB => value = self.b_reg,
+                            0xE0CC => value = self.c_reg,
+                            0xE0DD => value = self.d_reg,
+                            else => {}
+                        }
+                    },
+                    0xF => {
+                        std.log.info("0x{X}", .{value});
+                        gpu.int_flag = true;
+                        switch (value) {
+                            0xF000...0xF1FF => {
+                                value = read_word_from_file_at(value & 0xFFF);
+                            },
+                            else => {}
+                        }
+                    },
+                    else => {}
                 }
                 if (value == opcodes.GPU_RESET_PTR) {
                     self.gpu_buf_ptr = 0x300;

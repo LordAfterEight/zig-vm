@@ -7,7 +7,7 @@ const sfml = @cImport ({
 });
 
 const FRAME_SIZE_X = 120;
-const FRAME_SIZE_Y = 38;
+const FRAME_SIZE_Y = 37;
 
 const mode = sfml.sfVideoMode{
     .bitsPerPixel = 32,
@@ -112,7 +112,7 @@ pub const GPU = struct {
             self.cursor_x += 1;
         } else {
             self.cursor_x = 0;
-            if (self.cursor_y < FRAME_SIZE_Y - 1){
+            if (self.cursor_y < (FRAME_SIZE_Y - 1)){
                 self.cursor_y += 1;
             } else {
                 self.cursor_y = 0;
@@ -165,7 +165,11 @@ pub const GPU = struct {
             false => {
                 switch (instruction) {
                     opcodes.GPU_NEW_LINE => {
-                        self.cursor_y += 1;
+                        if (self.cursor_y < FRAME_SIZE_Y - 1) {
+                            self.cursor_y += 1;
+                        } else {
+                            self.cursor_y = 0;
+                        }
                         self.cursor_x = 0;
                     },
                     opcodes.GPU_RES_F_BUF => {
@@ -185,6 +189,11 @@ pub const GPU = struct {
                         self.cursor_y -= 1;
                     },
                     opcodes.GPU_MV_C_DOWN => {
+                        if (self.cursor_y < FRAME_SIZE_Y) {
+                            self.cursor_y += 1;
+                        } else {
+                            self.cursor_y = 0;
+                        }
                         self.cursor_y += 1;
                     },
                     opcodes.GPU_MV_C_LEFT => {
