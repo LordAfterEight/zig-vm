@@ -2,12 +2,20 @@ const std = @import("std");
 const opcodes = @import("opcodes.zig");
 const mem_ = @import("memory.zig");
 const GPU = @import("gpu.zig");
+const sfml = @cImport({
+    @cInclude("CSFML/Window.h");
+    @cInclude("CSFML/Graphics.h");
+    @cInclude("CSFML/System.h");
+});
 
 pub const CPU = struct {
     memory: mem_.Memory = mem_.Memory.init(),
     memory_ptr: u16 = 0x1000,
     gpu_buf_ptr: u16 = 0x300,
     stack_ptr: u16 = 0x0,
+
+    input_buffer_ptr: usize = 0x0,
+    input_buffer: [100]u8 = undefined,
 
     a_reg: u16 = 0x0,
     b_reg: u16 = 0x0,
@@ -18,6 +26,7 @@ pub const CPU = struct {
 
     halt_flag: bool = false,
     eq_flag: bool = false,
+    input_flag: bool = false,
 
     pub fn init() CPU {
         return CPU {};
@@ -67,6 +76,58 @@ pub const CPU = struct {
         std.mem.writeInt(u16, &buf, value, .big);
         try file.writeAll(&buf);
         self.memory_ptr += 0;
+    }
+
+    pub fn gpu_print(self: *CPU, buffer: []const u8) !void {
+        self.input_flag = false;
+        try self.write_word_to_file(opcodes.GPU_DRAW_TEXT, self.gpu_buf_ptr);
+        self.incr_gpu_buf_ptr();
+        for (buffer) |character| {
+            try self.write_word_to_file(character, self.gpu_buf_ptr);
+            self.incr_gpu_buf_ptr();
+        }
+        try self.write_word_to_file(0x60, self.gpu_buf_ptr);
+        self.incr_gpu_buf_ptr();
+        std.log.info("GPU Print: {s}", .{buffer});
+    }
+
+    pub fn gpu_println(self: *CPU, buffer: []const u8) !void {
+        try self.write_word_to_file(opcodes.GPU_NEW_LINE, self.gpu_buf_ptr);
+        self.incr_gpu_buf_ptr();
+        try self.gpu_print(buffer);
+    }
+
+    pub fn handle_input(self: *CPU, key: u32) !void {
+        const char: u8 = @intCast(key);
+        switch (char) {
+            '\r', '\n' => {
+                const string = self.input_buffer[0..self.input_buffer_ptr];
+                if (std.mem.eql(u8, string, "shutdown")) {
+                    std.process.exit(0);
+                } else if (std.mem.eql(u8, string, "help")) {
+                    try self.gpu_println("[CPU] => | help:");
+                    try self.gpu_println("  - shutdown | Shutdown the system");
+                    try self.gpu_println("  - help     | Show this help message");
+                } else {
+                    try self.gpu_println("[CPU] => | Invalid command: ");
+                    try self.gpu_print(string);
+                }
+                for (0..self.input_buffer.len) |i| {
+                    self.input_buffer[i] = 0x20;
+                    self.input_buffer_ptr = 0;
+                }
+            },
+            else => {
+                self.input_buffer[self.input_buffer_ptr] = char;
+                try self.write_word_to_file(opcodes.GPU_DRAW_TEXT, self.gpu_buf_ptr);
+                self.incr_gpu_buf_ptr();
+                try self.write_word_to_file(char, self.gpu_buf_ptr);
+                self.incr_gpu_buf_ptr();
+                try self.write_word_to_file(0x60, self.gpu_buf_ptr);
+                self.incr_gpu_buf_ptr();
+                self.input_buffer_ptr += 1;
+            },
+        }
     }
 
     pub fn update(self: *CPU, gpu: *GPU.GPU) !void {
@@ -252,6 +313,9 @@ pub const CPU = struct {
                 if (val1 == val2) {
                     self.eq_flag = true;
                 }
+            },
+            opcodes.AWAIT_INP => {
+                self.input_flag = true;
             },
             opcodes.NO_OPERAT => {
                 std.log.info("Doing nothing.", .{});

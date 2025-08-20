@@ -58,7 +58,7 @@ pub fn main() !void {
             "Actions: "
         });
 
-        if (cpu.halt_flag == false) {
+        if (!cpu.halt_flag and !cpu.input_flag) {
             cpu.update(&gpu) catch std.log.info("Error Occured!", .{});
         } else {
             std.log.info("Halt flag true", .{});
@@ -75,7 +75,11 @@ pub fn main() !void {
             if (event.type == sfml.sfEvtClosed) {
                 sfml.sfRenderWindow_close(gpu.window);
             }
+            if (event.type == sfml.sfEvtTextEntered) {
+                try cpu.handle_input(event.text.unicode);
+            }
         }
         try gpu.update();
+        //std.Thread.sleep(100_000_000);
     }
 }

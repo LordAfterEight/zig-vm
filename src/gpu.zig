@@ -174,13 +174,12 @@ pub const GPU = struct {
                                 self.frame_buffer[x][y] = ' ';
                             }
                         }
-                        self.cursor_y = 0;
+                        self.buf_ptr = 0x300;
+                        self.cursor_y = 1;
                         self.cursor_x = 0;
                     },
                     opcodes.GPU_RESET_PTR => {
                         self.buf_ptr = 0x300;
-                        self.cursor_y = 0;
-                        self.cursor_x = 0;
                     },
                     opcodes.GPU_MV_C_UP => {
                         self.cursor_y -= 1;
@@ -222,7 +221,7 @@ pub const GPU = struct {
 
         sfml.sfText_setPosition(cursor, sfml.sfVector2f{
             .x = @floatFromInt(self.cursor_x * (self.font_size - 4)),
-            .y = @floatFromInt(self.cursor_y * (self.font_size + 2)),
+            .y = @floatFromInt((self.cursor_y + 1) * (self.font_size + 2) - 2),
         });
         sfml.sfRenderWindow_drawText(self.window, cursor, null);
 
@@ -256,7 +255,7 @@ pub const GPU = struct {
 
 pub const Cursor = struct {
     cycle_counter: u16 = 0,
-    cursor_char: *const [1]u8 = "_",
+    cursor_char: *const [1]u8 = "^",
 
     pub fn init() Cursor {
         return Cursor {};
@@ -270,7 +269,7 @@ pub const Cursor = struct {
         }
 
         if (self.cycle_counter > 0x300 / 2) {
-            self.cursor_char = "_";
+            self.cursor_char = "^";
         } else {
             self.cursor_char = " ";
         }
