@@ -1,19 +1,6 @@
-filesys: files
-size = lit 0xA000
-end
-
-routine: greeting
-draw str Welcome^to^ col magenta
-draw str ZOS col cyan
-draw str !
-cmov nl
-draw str Press^[ESC]^to^quit^or^F11^to^toggle^Fullscreen col green
-cmov nl
-rtor
-end
-
 routine: entry
-jusr greeting
-draw str [CPU]^<=^#^
+var value = num 621
+load A var value
+draw reg A
 ctrl cpu halt
 end

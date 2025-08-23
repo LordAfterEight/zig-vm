@@ -29,7 +29,7 @@ pub const CPU = struct {
     input_flag: bool = false,
 
     pub fn init() CPU {
-        return CPU {};
+        return CPU{};
     }
 
     pub fn incr_mem_ptr(self: *CPU) void {
@@ -45,6 +45,9 @@ pub const CPU = struct {
             self.gpu_buf_ptr += 1;
         } else {
             self.gpu_buf_ptr = 0x300;
+            for (0x300..0xFFF) |i| {
+                self.write_word_to_file(opcodes.GPU_NO_OPERAT, @intCast(i)) catch {};
+            }
         }
     }
 
@@ -59,7 +62,7 @@ pub const CPU = struct {
         var return_value: u16 = opcodes.NO_OPERAT;
         return_value = std.mem.readInt(u16, &buf, .big);
 
-        std.log.info("Read instruction 0x{X} at address 0x{X}", .{return_value, self.memory_ptr});
+        std.log.info("Read instruction 0x{X} at address 0x{X}", .{ return_value, self.memory_ptr });
 
         self.incr_mem_ptr();
         return return_value;
@@ -76,16 +79,16 @@ pub const CPU = struct {
         var return_value: u16 = opcodes.NO_OPERAT;
         return_value = std.mem.readInt(u16, &buf, .big);
 
-        std.log.info("Read instruction 0x{X} at address 0x{X}", .{return_value, address});
+        std.log.info("Read instruction 0x{X} at address 0x{X}", .{ return_value, address });
 
         return return_value;
     }
 
     pub fn write_word_to_file(self: *CPU, value: u16, address: u16) !void {
-        var file = try std.fs.cwd().createFile("ROM.bin", .{.truncate = false});
+        var file = try std.fs.cwd().createFile("ROM.bin", .{ .truncate = false });
         defer file.close();
 
-        std.log.info("Write value 0x{X} to address 0x{X}", .{value, address});
+        std.log.info("Write value 0x{X} to address 0x{X}", .{ value, address });
 
         try file.seekTo(@as(u64, address) * 2);
         var buf: [2]u8 = undefined;
@@ -124,14 +127,15 @@ pub const CPU = struct {
                     try self.gpu_println("[CPU] => | help:");
                     try self.gpu_println("  - shutdown | Shutdown the system");
                     try self.gpu_println("  - help     | Show this help message");
-                } else {
+                } else if (std.mem.eql(u8, string, "")) {} else {
                     try self.gpu_println("[CPU] => | Invalid command: ");
                     try self.gpu_print(string);
                 }
                 for (0..self.input_buffer.len) |i| {
-                    self.input_buffer[i] = 0x20;
+                    self.input_buffer[i] = 0x0;
                     self.input_buffer_ptr = 0;
                 }
+                self.input_flag = false;
             },
             else => {
                 self.input_buffer[self.input_buffer_ptr] = char;
@@ -150,53 +154,61 @@ pub const CPU = struct {
         const instruction = self.read_word_from_file();
         switch (instruction) {
             opcodes.LOAD_AREG => {
-                const value = self.read_word_from_file();
+                var value = self.read_word_from_file();
+                if (value >> 12 == 0xF) {
+                    value = read_word_from_file_at(value & 0xFFF);
+                }
                 std.log.info("Loading A register with value: {}", .{value});
                 self.a_reg = value;
             },
             opcodes.LOAD_BREG => {
-                const value = self.read_word_from_file();
+                var value = self.read_word_from_file();
+                if (value >> 12 == 0xF) {
+                    value = read_word_from_file_at(value & 0xFFF);
+                }
                 std.log.info("Loading B register with value: {}", .{value});
                 self.b_reg = value;
             },
             opcodes.LOAD_CREG => {
-                const value = self.read_word_from_file();
+                var value = self.read_word_from_file();
+                if (value >> 12 == 0xF) {
+                    value = read_word_from_file_at(value & 0xFFF);
+                }
                 std.log.info("Loading C register with value: {}", .{value});
                 self.c_reg = value;
             },
             opcodes.LOAD_DREG => {
-                const value = self.read_word_from_file();
+                var value = self.read_word_from_file();
+                if (value >> 12 == 0xF) {
+                    value = read_word_from_file_at(value & 0xFFF);
+                }
                 std.log.info("Loading D register with value: {}", .{value});
                 self.d_reg = value;
             },
             opcodes.LOAD_GREG => {
                 var value = self.read_word_from_file();
+                std.log.info("Loading G register with value: {}", .{value});
                 switch (value >> 12) {
                     0xE => {
-                        std.log.info("0x{X}", .{value});
                         gpu.int_flag = true;
                         switch (value) {
                             0xE0AA => value = self.a_reg,
                             0xE0BB => value = self.b_reg,
                             0xE0CC => value = self.c_reg,
                             0xE0DD => value = self.d_reg,
-                            else => {}
+                            else => {},
                         }
                     },
                     0xF => {
-                        std.log.info("0x{X}", .{value});
                         gpu.int_flag = true;
                         switch (value) {
                             0xF000...0xF1FF => {
                                 value = read_word_from_file_at(value & 0xFFF);
                             },
-                            else => {}
+                            else => {},
                         }
                     },
-                    else => {}
-                }
-                if (value == opcodes.GPU_RESET_PTR) {
-                    self.gpu_buf_ptr = 0x300;
+                    else => {},
                 }
                 self.g_reg = value;
                 std.log.info("Loading G register with value: 0x{X}", .{value});
@@ -215,10 +227,15 @@ pub const CPU = struct {
             },
             opcodes.STOR_GREG => {
                 try self.write_word_to_file(self.g_reg, self.gpu_buf_ptr);
-                if (self.g_reg == opcodes.GPU_RES_F_BUF) {
-                    self.gpu_buf_ptr = 0x300;
-                } else {
-                    self.incr_gpu_buf_ptr();
+                switch (self.g_reg) {
+                    opcodes.GPU_RES_F_BUF => {
+                        self.gpu_buf_ptr = 0x300;
+                    },
+                    opcodes.GPU_RESET_PTR => {
+                        self.gpu_buf_ptr = 0x300;
+                    },
+                    opcodes.GPU_NO_OPERAT => {},
+                    else => self.incr_gpu_buf_ptr(),
                 }
             },
             opcodes.JMP_TO_AD => {
@@ -247,7 +264,7 @@ pub const CPU = struct {
                     0x42 => self.b_reg += val,
                     0x43 => self.c_reg += val,
                     0x44 => self.d_reg += val,
-                    else => {}
+                    else => {},
                 }
             },
             opcodes.DEC_REG_V => {
@@ -258,7 +275,7 @@ pub const CPU = struct {
                     0x42 => self.b_reg -= val,
                     0x43 => self.c_reg -= val,
                     0x44 => self.d_reg -= val,
-                    else => {}
+                    else => {},
                 }
             },
             opcodes.MUL_REG_V => {
@@ -269,7 +286,7 @@ pub const CPU = struct {
                     0x42 => self.b_reg *= val,
                     0x43 => self.c_reg *= val,
                     0x44 => self.d_reg *= val,
-                    else => {}
+                    else => {},
                 }
             },
             opcodes.DIV_REG_V => {
@@ -280,31 +297,31 @@ pub const CPU = struct {
                     0x42 => self.b_reg /= val,
                     0x43 => self.c_reg /= val,
                     0x44 => self.d_reg /= val,
-                    else => {}
+                    else => {},
                 }
             },
             opcodes.JUMP_IFEQ => {
                 switch (self.eq_flag) {
-                    true  => self.memory_ptr = self.read_word_from_file(),
-                    false => {}
+                    true => self.memory_ptr = self.read_word_from_file(),
+                    false => {},
                 }
                 self.eq_flag = false;
             },
             opcodes.JUMP_INEQ => {
                 switch (self.eq_flag) {
                     false => self.memory_ptr = self.read_word_from_file(),
-                    true  => {}
+                    true => {},
                 }
                 self.eq_flag = false;
             },
             opcodes.BRAN_IFEQ => {
                 self.memory.ram[self.stack_ptr] = self.memory_ptr;
                 switch (self.eq_flag) {
-                    true  => {
+                    true => {
                         self.memory_ptr = self.read_word_from_file();
                         self.incr_stack_ptr();
                     },
-                    false => {}
+                    false => {},
                 }
                 self.eq_flag = false;
             },
@@ -315,7 +332,7 @@ pub const CPU = struct {
                         self.memory_ptr = self.read_word_from_file();
                         self.incr_stack_ptr();
                     },
-                    true  => {}
+                    true => {},
                 }
                 self.eq_flag = false;
             },
@@ -328,7 +345,7 @@ pub const CPU = struct {
                     0x42 => val1 = self.b_reg,
                     0x43 => val1 = self.c_reg,
                     0x44 => val1 = self.d_reg,
-                    else => {}
+                    else => {},
                 }
 
                 switch (val2) {
@@ -336,10 +353,10 @@ pub const CPU = struct {
                     0x42 => val2 = self.b_reg,
                     0x43 => val2 = self.c_reg,
                     0x44 => val2 = self.d_reg,
-                    else => {}
+                    else => {},
                 }
 
-                std.log.info("Comparing {} with {}", .{val1, val2});
+                std.log.info("Comparing {} with {}", .{ val1, val2 });
                 if (val1 == val2) {
                     self.eq_flag = true;
                 }

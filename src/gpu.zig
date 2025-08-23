@@ -7,7 +7,7 @@ const sfml = @cImport ({
 });
 
 const FRAME_SIZE_X = 120;
-const FRAME_SIZE_Y = 37;
+const FRAME_SIZE_Y = 38;
 
 const mode = sfml.sfVideoMode{
     .bitsPerPixel = 32,
@@ -104,7 +104,11 @@ pub const GPU = struct {
     }
 
     pub fn incr_buf_ptr(self: *GPU) !void {
-        self.buf_ptr +%= 1;
+        if (self.buf_ptr < 0xFFF) {
+            self.buf_ptr += 1;
+        } else {
+            self.buf_ptr = 0x300;
+        }
     }
 
     pub fn move_cursor(self: *GPU) !void {

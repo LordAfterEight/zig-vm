@@ -75,7 +75,7 @@ pub fn main() !void {
             if (event.type == sfml.sfEvtClosed) {
                 sfml.sfRenderWindow_close(gpu.window);
             }
-            if (event.type == sfml.sfEvtTextEntered) {
+            if (event.type == sfml.sfEvtTextEntered and cpu.input_flag) {
                 try cpu.handle_input(event.text.unicode);
             }
         }
