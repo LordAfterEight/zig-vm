@@ -1,6 +1,0 @@
-routine: entry
-var value = num 621
-load A var value
-draw reg A
-ctrl cpu halt
-end

@@ -1,0 +1,35 @@
+var val1 = num 1
+var val2 = num 0
+var val3 = num 0
+
+
+routine: fibonacci
+    radd C num 1
+    stor A var val3
+    radd A reg B
+    load B var val3
+
+    draw reg C
+    draw str :^ col cyan
+    draw reg A
+    cmov nl
+
+    rsub D num 1
+    comp reg D num 0
+    juin fibonacci
+    rtor
+end
+
+
+routine: entry
+    load A var val1
+    load B var val2
+    load D num 23
+    draw str The^first^
+    draw reg D
+    draw str ^numbers^in^the^fibonacci^sequence^are:
+    cmov nl
+    bran fibonacci
+    draw str done col green
+    ctrl cpu halt
+end

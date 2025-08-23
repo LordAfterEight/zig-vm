@@ -1,0 +1,65 @@
+routine: greeting
+draw str Welcome^to^ col magenta
+draw str ZOS col cyan
+draw str !
+cmov nl
+draw str Press^
+draw str [ESC]^ col green
+draw str to^exit^or^
+draw str F11^ col green
+draw str to^toggle^fullscreen
+cmov nl
+rtor
+end
+
+routine: debug_print
+draw str Register^A:^
+draw reg A
+cmov nl
+draw str Register^B:^
+draw reg B
+cmov nl
+draw str Register^C:^
+draw reg C
+cmov nl
+draw str Register^D:^
+draw reg D
+cmov nl
+rtor
+end
+
+routine: input
+draw str [ col green
+draw str CPU
+draw str ]^ col green
+draw str <=^
+draw str |^ col magenta
+inpt
+cmov nl
+jump input
+rtor
+end
+
+routine: pause
+radd A num 1
+comp reg A num 1000
+juin pause
+load A num 0
+rtor
+end
+
+routine: entry
+var test_variable1 = lit 0xFFFF
+var test_variable2 = hex A
+var test_variable3 = num 621
+draw str var1:^ col green
+draw var test_variable1
+cmov nl
+draw str var2:^ col green
+draw var test_variable2
+cmov nl
+draw str var3:^ col green
+draw var test_variable3
+cmov nl
+jusr input
+end
