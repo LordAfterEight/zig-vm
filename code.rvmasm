@@ -1,6 +1,24 @@
+var val1 = num 10
+var val2 = num 6
+
+
+routine: fibonacci
+
+    load A var val1
+    load B var val2
+
+    rsub A reg B
+
+    draw reg A
+
+
+
+    rtor
+end
+
+
 routine: entry
-var value = num 621
-load A var value
-draw reg A
-ctrl cpu halt
+    bran fibonacci
+    draw str done col green
+    ctrl cpu halt
 end

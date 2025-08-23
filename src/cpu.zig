@@ -258,7 +258,14 @@ pub const CPU = struct {
             },
             opcodes.INC_REG_V => {
                 const reg = self.read_word_from_file();
-                const val = self.read_word_from_file();
+                var val = self.read_word_from_file();
+                switch (val) {
+                    0xE0AA => val = self.a_reg,
+                    0xE0BB => val = self.b_reg,
+                    0xE0CC => val = self.c_reg,
+                    0xE0DD => val = self.d_reg,
+                    else => {},
+                }
                 switch (reg) {
                     0x41 => self.a_reg += val,
                     0x42 => self.b_reg += val,
@@ -269,7 +276,14 @@ pub const CPU = struct {
             },
             opcodes.DEC_REG_V => {
                 const reg = self.read_word_from_file();
-                const val = self.read_word_from_file();
+                var val = self.read_word_from_file();
+                switch (val) {
+                    0xE0AA => val = self.a_reg,
+                    0xE0BB => val = self.b_reg,
+                    0xE0CC => val = self.c_reg,
+                    0xE0DD => val = self.d_reg,
+                    else => {},
+                }
                 switch (reg) {
                     0x41 => self.a_reg -= val,
                     0x42 => self.b_reg -= val,
@@ -280,7 +294,14 @@ pub const CPU = struct {
             },
             opcodes.MUL_REG_V => {
                 const reg = self.read_word_from_file();
-                const val = self.read_word_from_file();
+                var val = self.read_word_from_file();
+                switch (val) {
+                    0xE0AA => val = self.a_reg,
+                    0xE0BB => val = self.b_reg,
+                    0xE0CC => val = self.c_reg,
+                    0xE0DD => val = self.d_reg,
+                    else => {},
+                }
                 switch (reg) {
                     0x41 => self.a_reg *= val,
                     0x42 => self.b_reg *= val,
@@ -291,7 +312,14 @@ pub const CPU = struct {
             },
             opcodes.DIV_REG_V => {
                 const reg = self.read_word_from_file();
-                const val = self.read_word_from_file();
+                var val = self.read_word_from_file();
+                switch (val) {
+                    0xE0AA => val = self.a_reg,
+                    0xE0BB => val = self.b_reg,
+                    0xE0CC => val = self.c_reg,
+                    0xE0DD => val = self.d_reg,
+                    else => {},
+                }
                 switch (reg) {
                     0x41 => self.a_reg /= val,
                     0x42 => self.b_reg /= val,
